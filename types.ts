@@ -1,80 +1,79 @@
 
-// Consolidation of User and Profile types to maintain consistency across the app
-export interface User {
+export interface Profile {
   id: string;
   name: string;
   email: string;
   xp: number;
   level: number;
   streak: number;
-  lastActive: string;
+  last_active: string;
+  avatar_url?: string;
   unlockedFeatures: string[];
   diaryPinHash: string;
-  avatarUrl?: string;
 }
 
-// Alias for components that still use 'Profile'
-export type Profile = User;
+export type User = Profile;
 
 export interface Habit {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
   frequency: 'daily' | 'weekly';
-  createdAt: string;
+  created_at: string;
 }
 
 export interface HabitLog {
   id: string;
-  habitId: string;
-  userId: string;
+  habit_id: string;
+  user_id: string;
   date: string;
 }
 
 export interface Task {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
   priority: 'low' | 'medium' | 'high';
-  dueDate: string;
+  due_date: string;
   completed: boolean;
-  completedAt?: string;
+  completed_at?: string;
+  created_at: string;
 }
 
 export interface FinancialEntry {
   id: string;
-  userId: string;
+  user_id: string;
   type: 'income' | 'expense';
-  category: string;
   amount: number;
   description: string;
+  category: string;
   date: string;
   attachments?: string[];
 }
 
 export interface WorkoutPlan {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
   description: string;
-  exercises: {
+  exercises: Array<{
     name: string;
     sets: number;
     reps: string;
     weight?: string;
-  }[];
+  }>;
 }
 
 export interface WaterLog {
   id: string;
-  userId: string;
+  user_id: string;
   amount: number;
   date: string;
 }
 
 export interface XPLog {
   id: string;
-  userId: string;
+  user_id: string;
   amount: number;
   source: string;
   timestamp: string;
@@ -82,20 +81,20 @@ export interface XPLog {
 
 export interface DiaryEntry {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
   content: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UserFile {
   id: string;
-  userId: string;
+  user_id: string;
   fileName: string;
   data: string;
   mimeType: string;
-  createdAt: string;
+  created_at: string;
   linkedEntity?: {
     type: string;
     id: string;
@@ -105,13 +104,13 @@ export interface UserFile {
 export interface UserSettings {
   waterGoal: number;
   notificationsEnabled: boolean;
-  theme: 'light' | 'dark';
+  theme: 'dark' | 'light';
 }
 
 export enum XPRewards {
   HABIT = 10,
   TASK = 15,
-  FINANCE = 8,
-  WORKOUT = 20,
-  DIARY = 12
+  STREAK_BONUS = 50,
+  DIARY = 20,
+  FINANCE = 8
 }

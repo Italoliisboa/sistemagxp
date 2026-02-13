@@ -47,7 +47,7 @@ export const DB = {
       xp: 0,
       level: 1,
       streak: 0,
-      lastActive: new Date().toISOString(),
+      last_active: new Date().toISOString(),
       unlockedFeatures: [],
       diaryPinHash: hashPin(diaryPin)
     };
@@ -61,6 +61,7 @@ export const DB = {
     const store = getStore();
     const idx = store.users.findIndex(u => u.id === userId);
     if (idx !== -1) {
+      // Correcting update of hashed pin if provided
       if (updates.diaryPinHash) updates.diaryPinHash = hashPin(updates.diaryPinHash);
       store.users[idx] = { ...store.users[idx], ...updates };
       saveStore(store);
@@ -81,16 +82,17 @@ export const DB = {
   },
 
   // Diary
-  getDiaryEntries: (userId: string) => getStore().diary.filter(d => d.userId === userId),
+  // Correcting d.userId to d.user_id to match types.ts
+  getDiaryEntries: (userId: string) => getStore().diary.filter(d => d.user_id === userId),
   addDiaryEntry: (userId: string, title: string, content: string) => {
     const store = getStore();
     const newEntry: DiaryEntry = {
       id: Math.random().toString(36).substr(2, 9),
-      userId,
+      user_id: userId,
       title,
       content,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     store.diary.push(newEntry);
     saveStore(store);
@@ -99,31 +101,34 @@ export const DB = {
   },
   updateDiaryEntry: (userId: string, id: string, title: string, content: string) => {
     const store = getStore();
-    const entry = store.diary.find(d => d.id === id && d.userId === userId);
+    // Correcting d.userId to d.user_id to match types.ts
+    const entry = store.diary.find(d => d.id === id && d.user_id === userId);
     if (entry) {
       entry.title = title;
       entry.content = content;
-      entry.updatedAt = new Date().toISOString();
+      entry.updated_at = new Date().toISOString();
       saveStore(store);
     }
   },
   deleteDiaryEntry: (userId: string, id: string) => {
     const store = getStore();
-    store.diary = store.diary.filter(d => !(d.id === id && d.userId === userId));
+    // Correcting d.userId to d.user_id to match types.ts
+    store.diary = store.diary.filter(d => !(d.id === id && d.user_id === userId));
     saveStore(store);
   },
 
   // Files
-  getUserFiles: (userId: string) => getStore().files.filter(f => f.userId === userId),
+  // Correcting f.userId to f.user_id to match types.ts
+  getUserFiles: (userId: string) => getStore().files.filter(f => f.user_id === userId),
   uploadFile: (userId: string, fileName: string, data: string, mimeType: string, linkedEntity?: UserFile['linkedEntity']) => {
     const store = getStore();
     const newFile: UserFile = {
       id: Math.random().toString(36).substr(2, 9),
-      userId,
+      user_id: userId,
       fileName,
       data,
       mimeType,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       linkedEntity
     };
     store.files.push(newFile);
@@ -132,7 +137,8 @@ export const DB = {
   },
   deleteFile: (userId: string, id: string) => {
     const store = getStore();
-    store.files = store.files.filter(f => !(f.id === id && f.userId === userId));
+    // Correcting f.userId to f.user_id to match types.ts
+    store.files = store.files.filter(f => !(f.id === id && f.user_id === userId));
     saveStore(store);
   },
 
@@ -145,7 +151,7 @@ export const DB = {
       user.level = Math.floor(Math.sqrt(user.xp / 100)) + 1;
       const log: XPLog = {
         id: Math.random().toString(36).substr(2, 9),
-        userId,
+        user_id: userId,
         amount,
         source,
         timestamp: new Date().toISOString()
@@ -156,12 +162,13 @@ export const DB = {
   },
 
   // Habits
-  getHabits: (userId: string) => getStore().habits.filter(h => h.userId === userId),
+  // Correcting h.userId to h.user_id to match types.ts
+  getHabits: (userId: string) => getStore().habits.filter(h => h.user_id === userId),
   addHabit: (userId: string, title: string, frequency: 'daily' | 'weekly') => {
     const store = getStore();
     const newHabit: Habit = {
       id: Math.random().toString(36).substr(2, 9),
-      userId, title, frequency, createdAt: new Date().toISOString()
+      user_id: userId, title, frequency, created_at: new Date().toISOString()
     };
     store.habits.push(newHabit);
     saveStore(store);
@@ -169,27 +176,31 @@ export const DB = {
   },
   toggleHabit: (userId: string, habitId: string, date: string) => {
     const store = getStore();
-    const existingIndex = store.habitLogs.findIndex(l => l.habitId === habitId && l.date === date);
+    // Correcting l.habitId to l.habit_id to match types.ts
+    const existingIndex = store.habitLogs.findIndex(l => l.habit_id === habitId && l.date === date);
     if (existingIndex > -1) {
       store.habitLogs.splice(existingIndex, 1);
       saveStore(store);
       return false;
     } else {
-      store.habitLogs.push({ id: Math.random().toString(36).substr(2, 9), habitId, userId, date });
+      // Correcting habitId/userId to habit_id/user_id to match types.ts
+      store.habitLogs.push({ id: Math.random().toString(36).substr(2, 9), habit_id: habitId, user_id: userId, date });
       saveStore(store);
       DB.addXP(userId, XPRewards.HABIT, 'Hábito Concluído');
       return true;
     }
   },
-  getHabitLogs: (userId: string) => getStore().habitLogs.filter(l => l.userId === userId),
+  // Correcting l.userId to l.user_id to match types.ts
+  getHabitLogs: (userId: string) => getStore().habitLogs.filter(l => l.user_id === userId),
 
   // Tasks
-  getTasks: (userId: string) => getStore().tasks.filter(t => t.userId === userId),
+  // Correcting t.userId to t.user_id to match types.ts
+  getTasks: (userId: string) => getStore().tasks.filter(t => t.user_id === userId),
   addTask: (userId: string, title: string, priority: 'low' | 'medium' | 'high', dueDate: string) => {
     const store = getStore();
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
-      userId, title, priority, dueDate, completed: false
+      user_id: userId, title, priority, due_date: dueDate, completed: false, created_at: new Date().toISOString()
     };
     store.tasks.push(newTask);
     saveStore(store);
@@ -200,20 +211,23 @@ export const DB = {
     const task = store.tasks.find(t => t.id === taskId);
     if (task && !task.completed) {
       task.completed = true;
-      task.completedAt = new Date().toISOString();
+      // Correcting completedAt to completed_at
+      task.completed_at = new Date().toISOString();
       saveStore(store);
       DB.addXP(userId, XPRewards.TASK, 'Tarefa Finalizada');
     }
   },
 
   // Finance
-  getFinance: (userId: string) => getStore().finance.filter(f => f.userId === userId),
-  addFinance: (userId: string, entry: Omit<FinancialEntry, 'id' | 'userId'>) => {
+  // Correcting f.userId to f.user_id to match types.ts
+  getFinance: (userId: string) => getStore().finance.filter(f => f.user_id === userId),
+  // Correcting userId to user_id in Omit and assignment
+  addFinance: (userId: string, entry: Omit<FinancialEntry, 'id' | 'user_id'>) => {
     const store = getStore();
     const newEntry: FinancialEntry = {
       ...entry,
       id: Math.random().toString(36).substr(2, 9),
-      userId
+      user_id: userId
     };
     store.finance.push(newEntry);
     saveStore(store);
@@ -230,13 +244,15 @@ export const DB = {
   },
 
   // Fitness
-  getWorkouts: (userId: string) => getStore().workouts.filter(w => w.userId === userId),
-  addWorkoutPlan: (userId: string, plan: Omit<WorkoutPlan, 'id' | 'userId'>) => {
+  // Correcting w.userId to w.user_id to match types.ts
+  getWorkouts: (userId: string) => getStore().workouts.filter(w => w.user_id === userId),
+  // Correcting userId to user_id in Omit and assignment
+  addWorkoutPlan: (userId: string, plan: Omit<WorkoutPlan, 'id' | 'user_id'>) => {
     const store = getStore();
     const newPlan: WorkoutPlan = {
       ...plan,
       id: Math.random().toString(36).substr(2, 9),
-      userId
+      user_id: userId
     };
     store.workouts.push(newPlan);
     saveStore(store);
@@ -244,13 +260,14 @@ export const DB = {
   },
 
   // Water
-  getWaterLogs: (userId: string, date: string) => getStore().water.filter(w => w.userId === userId && w.date === date),
+  // Correcting w.userId to w.user_id to match types.ts
+  getWaterLogs: (userId: string, date: string) => getStore().water.filter(w => w.user_id === userId && w.date === date),
   addWater: (userId: string, amount: number) => {
     const store = getStore();
     const date = new Date().toISOString().split('T')[0];
     const log: WaterLog = {
       id: Math.random().toString(36).substr(2, 9),
-      userId, amount, date
+      user_id: userId, amount, date
     };
     store.water.push(log);
     saveStore(store);

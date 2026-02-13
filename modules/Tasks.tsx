@@ -79,7 +79,8 @@ const Tasks: React.FC<TasksProps> = ({ user, refreshUser }) => {
                     }`}>
                       {task.priority}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">📅 {task.dueDate}</span>
+                    {/* Correcting task.dueDate to task.due_date */}
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">📅 {task.due_date}</span>
                   </div>
                 </div>
                 <button 
@@ -104,7 +105,8 @@ const Tasks: React.FC<TasksProps> = ({ user, refreshUser }) => {
               <div key={task.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
                 <div className="line-through text-slate-400">
                   <h4 className="font-bold">{task.title}</h4>
-                  <p className="text-[10px] uppercase font-bold text-slate-600">Completada em {new Date(task.completedAt!).toLocaleDateString()}</p>
+                  {/* Correcting task.completedAt to task.completed_at */}
+                  <p className="text-[10px] uppercase font-bold text-slate-600">Completada em {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</p>
                 </div>
                 <div className="text-green-500 font-bold text-xs">+15 XP</div>
               </div>

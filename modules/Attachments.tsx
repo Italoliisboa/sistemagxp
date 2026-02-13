@@ -65,7 +65,8 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
               {file.mimeType.includes('pdf') ? '📄' : file.mimeType.includes('image') ? '🖼️' : '📁'}
             </div>
             <h4 className="font-bold text-sm truncate mb-1" title={file.fileName}>{file.fileName}</h4>
-            <p className="text-[10px] text-slate-500 uppercase font-bold mb-4">Criado em {new Date(file.createdAt).toLocaleDateString()}</p>
+            {/* Correcting file.createdAt to file.created_at to match types.ts */}
+            <p className="text-[10px] text-slate-500 uppercase font-bold mb-4">Criado em {new Date(file.created_at).toLocaleDateString()}</p>
             <div className="flex gap-2 mt-auto">
               <button 
                 onClick={() => downloadFile(file)}
