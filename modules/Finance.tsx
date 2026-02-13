@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { User, FinancialEntry, UserFile } from '../types';
-import { DB } from '../db';
+import React, { useState, useEffect } from 'react';
+import { User, FinancialEntry } from '../types';
+import { API } from '../api';
 
 interface FinanceProps {
   user: User;
@@ -9,174 +9,141 @@ interface FinanceProps {
 }
 
 const Finance: React.FC<FinanceProps> = ({ user, refreshUser }) => {
-  const entries = DB.getFinance(user.id);
-  const userFiles = DB.getUserFiles(user.id);
+  const [entries, setEntries] = useState<FinancialEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Geral');
-  const [selectedFile, setSelectedFile] = useState<string>('');
+
+  useEffect(() => { loadFinance(); }, [user.id]);
+
+  const loadFinance = async () => {
+    setLoading(true);
+    const data = await API.getFinance(user.id);
+    setEntries(data);
+    setLoading(false);
+  };
 
   const totalIncome = entries.filter(e => e.type === 'income').reduce((acc, e) => acc + e.amount, 0);
   const totalExpense = entries.filter(e => e.type === 'expense').reduce((acc, e) => acc + e.amount, 0);
   const balance = totalIncome - totalExpense;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!amount || isNaN(Number(amount))) return;
-    const entry = DB.addFinance(user.id, {
+    await API.addFinance(user.id, {
       type,
       amount: Number(amount),
       description,
       category,
-      date: new Date().toISOString().split('T')[0],
-      attachments: selectedFile ? [selectedFile] : []
-    });
+      date: new Date().toISOString().split('T')[0]
+    }, user.xp);
+    
     setAmount('');
     setDescription('');
-    setSelectedFile('');
+    loadFinance();
     refreshUser();
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const rows = text.split('\n').slice(1); // skip header
-      let count = 0;
-      rows.forEach(row => {
-        const [date, desc, value, cat] = row.split(',');
-        if (date && desc && value) {
-          const amount = parseFloat(value);
-          DB.addFinance(user.id, {
-            type: amount >= 0 ? 'income' : 'expense',
-            amount: Math.abs(amount),
-            description: desc,
-            category: cat?.trim() || 'Importado',
-            date: date.trim()
-          });
-          count++;
-        }
-      });
-      alert(`${count} transações importadas com sucesso!`);
-      refreshUser();
-    };
-    reader.readAsText(file);
-  };
-
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+    <div className="max-w-6xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center shadow-lg">
-          <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Balanço do Reino</div>
-          <div className={`text-4xl font-rpg font-bold ${balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            R$ {balance.toFixed(2)}
+        <div className="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center shadow-xl">
+          <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-1">Balanço Operacional</div>
+          <div className={`text-4xl font-black tracking-tighter ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
         </div>
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center shadow-lg">
-          <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Tesouros (Mês)</div>
-          <div className="text-3xl font-rpg font-bold text-cyan-400">R$ {totalIncome.toFixed(2)}</div>
+        <div className="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center shadow-xl">
+          <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-1">Tesouros Coletados</div>
+          <div className="text-3xl font-black text-blue-500 tracking-tighter">R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 text-center shadow-lg">
-          <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Tributos (Mês)</div>
-          <div className="text-3xl font-rpg font-bold text-amber-400">R$ {totalExpense.toFixed(2)}</div>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-bold flex items-center gap-2">💰 Novo Lançamento</h3>
-          <label className="text-xs bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl font-bold border border-slate-700 cursor-pointer transition-colors">
-            📥 Importar Extrato (CSV)
-            <input type="file" className="hidden" accept=".csv" onChange={handleImportCSV} />
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <select 
-            className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-amber-500"
-            value={type}
-            onChange={(e) => setType(e.target.value as any)}
-          >
-            <option value="expense">Despesa</option>
-            <option value="income">Receita</option>
-          </select>
-          <input 
-            type="number" 
-            placeholder="Valor R$..."
-            className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-amber-500"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <input 
-            type="text" 
-            placeholder="Descrição..."
-            className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-amber-500"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <select 
-            className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-amber-500"
-            value={selectedFile}
-            onChange={(e) => setSelectedFile(e.target.value)}
-          >
-            <option value="">Anexar Comprovante</option>
-            {userFiles.map(f => <option key={f.id} value={f.id}>{f.fileName}</option>)}
-          </select>
-          <button 
-            onClick={handleAdd}
-            className="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-xl font-bold transition-all"
-          >
-            Registrar (+8 XP)
-          </button>
+        <div className="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center shadow-xl">
+          <div className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-1">Tributos Pagos</div>
+          <div className="text-3xl font-black text-amber-500 tracking-tighter">R$ {totalExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         </div>
       </div>
 
-      <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-        <table className="w-full text-left">
-          <thead className="bg-slate-800/50 text-slate-500 text-[10px] font-black uppercase tracking-wider">
-            <tr>
-              <th className="px-6 py-5">Data</th>
-              <th className="px-6 py-5">Descrição</th>
-              <th className="px-6 py-5">Categoria</th>
-              <th className="px-6 py-5">Anexo</th>
-              <th className="px-6 py-5 text-right">Valor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {entries.slice().reverse().map(entry => (
-              <tr key={entry.id} className="hover:bg-slate-800/20 transition-colors group">
-                <td className="px-6 py-5 text-xs text-slate-500">{entry.date}</td>
-                <td className="px-6 py-5 font-bold text-slate-200">{entry.description}</td>
-                <td className="px-6 py-5"><span className="bg-slate-800 px-2 py-1 rounded text-[10px] font-black uppercase text-slate-400">{entry.category}</span></td>
-                <td className="px-6 py-5">
-                  {entry.attachments && entry.attachments.length > 0 && (
-                    <button 
-                      onClick={() => {
-                        const file = userFiles.find(f => f.id === entry.attachments![0]);
-                        if (file) {
-                          const link = document.createElement('a');
-                          link.href = file.data;
-                          link.download = file.fileName;
-                          link.click();
-                        }
-                      }}
-                      className="text-xs text-cyan-500 hover:underline"
-                    >
-                      📎 Ver
-                    </button>
-                  )}
-                </td>
-                <td className={`px-6 py-5 text-right font-rpg font-bold ${entry.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-                  {entry.type === 'income' ? '+' : '-'} R$ {entry.amount.toFixed(2)}
-                </td>
+      <div className="bg-zinc-900 rounded-3xl p-8 border border-zinc-800 shadow-2xl space-y-8">
+        <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">💰 Registro de Transação</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Fluxo</label>
+            <select 
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 text-white"
+              value={type}
+              onChange={(e) => setType(e.target.value as any)}
+            >
+              <option value="expense">Despesa (Tributo)</option>
+              <option value="income">Receita (Tesouro)</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Valor R$</label>
+            <input 
+              type="number" 
+              placeholder="0,00"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 text-white"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Descrição</label>
+            <input 
+              type="text" 
+              placeholder="Ex: Aluguel, Salário..."
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 text-white"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end">
+            <button 
+              onClick={handleAdd}
+              className="w-full bg-blue-600 hover:bg-blue-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20"
+            >
+              Lançar +8 XP
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-zinc-950/50 text-zinc-500 text-[9px] font-black uppercase tracking-widest">
+              <tr>
+                <th className="px-6 py-5">Sincronia</th>
+                <th className="px-6 py-5">Descrição</th>
+                <th className="px-6 py-5">Tipo</th>
+                <th className="px-6 py-5 text-right">Montante</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {entries.map(entry => (
+                <tr key={entry.id} className="hover:bg-zinc-800/20 transition-colors">
+                  <td className="px-6 py-5 text-[10px] font-mono text-zinc-600">{entry.date}</td>
+                  <td className="px-6 py-5 font-bold text-zinc-200 text-sm">{entry.description}</td>
+                  <td className="px-6 py-5">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${entry.type === 'income' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                      {entry.type === 'income' ? 'Receita' : 'Despesa'}
+                    </span>
+                  </td>
+                  <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'income' ? 'text-blue-400' : 'text-amber-500'}`}>
+                    {entry.type === 'income' ? '+' : '-'} R$ {entry.amount.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading && entries.length === 0 && (
+          <div className="py-20 text-center">
+            <p className="text-zinc-600 font-mono text-xs uppercase tracking-widest">Nenhuma transação registrada no livro razão.</p>
+          </div>
+        )}
       </div>
     </div>
   );
