@@ -1,39 +1,49 @@
 
-import React, { useState } from 'react';
-import { DB } from '../db';
+import React, { useState, useEffect } from 'react';
+import { API } from '../api';
+import { Profile } from '../types';
 
 const Admin: React.FC = () => {
   const [pin, setPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // Standard PIN 3530
+  const handleLogin = async () => {
+    // PIN de segurança padrão para deploy: 3530
     if (pin === '3530') {
       setIsAuthenticated(true);
-      setStats(DB.getStats());
+      setLoading(true);
+      const s = await API.getGlobalStats();
+      const u = await API.getAllUsers();
+      setStats(s);
+      setUsers(u);
+      setLoading(false);
     } else {
-      alert("PIN Inválido. O log do sistema registrou sua falha.");
+      alert("ACESSO NEGADO. OPERAÇÃO REGISTRADA.");
       setPin('');
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-center space-y-6">
+      <div className="max-w-md mx-auto mt-20 p-8 bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl text-center space-y-6 animate-in zoom-in duration-300">
         <div className="text-5xl">🔐</div>
-        <h2 className="text-xl font-rpg font-bold text-red-500">Área Administrativa</h2>
-        <p className="text-slate-400 text-sm">Insira o PIN de acesso de nível Arquiteto.</p>
+        <h2 className="text-2xl font-black text-red-500 uppercase tracking-tighter">Terminal Root</h2>
+        <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Insira o PIN de acesso nível Arquiteto</p>
         <input 
           type="password" 
           maxLength={4}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-center text-3xl tracking-[1em] outline-none focus:ring-2 ring-red-500"
+          autoFocus
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-5 text-center text-4xl tracking-[0.5em] outline-none focus:border-red-500 text-white font-mono"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
         />
         <button 
           onClick={handleLogin}
-          className="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-900/20"
+          className="w-full bg-red-600 hover:bg-red-500 py-4 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-red-900/20"
         >
           Autenticar
         </button>
@@ -41,58 +51,62 @@ const Admin: React.FC = () => {
     );
   }
 
-  const users = DB.getAllUsers();
+  if (loading) return <div className="text-center py-20 text-zinc-500 font-mono animate-pulse">[ ANALISANDO NÚCLEO DO SISTEMA... ]</div>;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 animate-in zoom-in duration-300">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-rpg font-bold text-white tracking-tighter">ADMIN TERMINAL</h2>
-        <div className="bg-red-500/10 text-red-500 px-3 py-1 rounded border border-red-500/20 text-xs font-bold uppercase">Root Access Active</div>
+    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-500 pb-20">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Admin Core</h2>
+          <p className="text-red-500 text-[10px] font-black uppercase tracking-widest mt-1 animate-pulse">● Acesso Root Ativo</p>
+        </div>
+        <button onClick={() => window.location.reload()} className="text-zinc-600 hover:text-white text-[10px] font-black uppercase tracking-widest">Sair do Terminal</button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <div className="text-slate-500 text-[10px] font-black uppercase">Usuários</div>
-          <div className="text-3xl font-bold">{stats.totalUsers}</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+          <div className="text-zinc-500 text-[10px] font-black uppercase mb-1">Total de Operadores</div>
+          <div className="text-4xl font-black text-white">{stats?.totalUsers}</div>
         </div>
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <div className="text-slate-500 text-[10px] font-black uppercase">Hábitos Criados</div>
-          <div className="text-3xl font-bold">{stats.totalHabits}</div>
+        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+          <div className="text-zinc-500 text-[10px] font-black uppercase mb-1">Protocolos de Hábito</div>
+          <div className="text-4xl font-black text-white">{stats?.totalHabits}</div>
         </div>
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <div className="text-slate-500 text-[10px] font-black uppercase">Missões Lancadas</div>
-          <div className="text-3xl font-bold">{stats.totalTasks}</div>
-        </div>
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <div className="text-slate-500 text-[10px] font-black uppercase">XP Gerado</div>
-          <div className="text-3xl font-bold text-cyan-400">{stats.totalXP}</div>
+        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+          <div className="text-zinc-500 text-[10px] font-black uppercase mb-1">Missões Lançadas</div>
+          <div className="text-4xl font-black text-white">{stats?.totalTasks}</div>
         </div>
       </div>
 
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="p-4 bg-slate-800/50 border-b border-slate-800 font-bold text-sm">Lista de Heróis do Sistema</div>
-        <table className="w-full text-left">
-          <thead className="text-[10px] text-slate-500 uppercase font-black">
-            <tr>
-              <th className="px-6 py-4">ID</th>
-              <th className="px-6 py-4">Nome</th>
-              <th className="px-6 py-4">Email</th>
-              <th className="px-6 py-4">Level</th>
-              <th className="px-6 py-4">XP</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {users.map(u => (
-              <tr key={u.id} className="text-sm">
-                <td className="px-6 py-4 font-mono text-slate-500">{u.id}</td>
-                <td className="px-6 py-4 font-bold">{u.name}</td>
-                <td className="px-6 py-4 text-slate-400">{u.email}</td>
-                <td className="px-6 py-4"><span className="bg-slate-800 px-2 py-0.5 rounded text-cyan-400">LVL {u.level}</span></td>
-                <td className="px-6 py-4 font-mono">{u.xp}</td>
+      <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden shadow-2xl">
+        <div className="p-5 bg-zinc-950/50 border-b border-zinc-800 font-black text-[10px] uppercase tracking-widest text-zinc-500">Mural de Heróis Sincronizados</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="text-[9px] text-zinc-600 uppercase font-black bg-zinc-950/30">
+              <tr>
+                <th className="px-6 py-5">Identificador</th>
+                <th className="px-6 py-5">Operador</th>
+                <th className="px-6 py-5">Status (Lvl)</th>
+                <th className="px-6 py-5 text-right">Experiência (XP)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {users.map(u => (
+                <tr key={u.id} className="hover:bg-zinc-800/20 transition-colors">
+                  <td className="px-6 py-5 font-mono text-[10px] text-zinc-600">{u.id.substring(0, 8)}</td>
+                  <td className="px-6 py-5">
+                    <div className="font-black text-zinc-100">{u.name}</div>
+                    <div className="text-[10px] text-zinc-600 truncate max-w-[150px]">{u.email}</div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="bg-blue-600/10 text-blue-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase">LVL {u.level}</span>
+                  </td>
+                  <td className="px-6 py-5 text-right font-mono text-zinc-200">{u.xp.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

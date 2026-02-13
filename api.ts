@@ -1,9 +1,9 @@
 
 import { supabase } from './supabase';
-import { Habit, Task, XPRewards, Profile, FinancialEntry, DiaryEntry, WorkoutPlan, UserFile } from './types';
+import { Habit, Task, XPRewards, Profile, FinancialEntry, DiaryEntry, WorkoutPlan, UserFile, UserSettings } from './types';
 
 export const API = {
-  // PROFILE
+  // PROFILE & SETTINGS
   getProfile: async (userId: string): Promise<Profile> => {
     const { data, error } = await supabase
       .from('profiles')
@@ -12,6 +12,10 @@ export const API = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  updateProfile: async (userId: string, updates: Partial<Profile>) => {
+    return supabase.from('profiles').update(updates).eq('id', userId);
   },
 
   addXP: async (userId: string, currentXP: number, amount: number) => {
@@ -25,6 +29,20 @@ export const API = {
         last_active: new Date().toISOString() 
       })
       .eq('id', userId);
+  },
+
+  getSettings: async (userId: string): Promise<UserSettings> => {
+    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    return data || { waterGoal: 2500, notificationsEnabled: true, theme: 'dark' };
+  },
+
+  updateSettings: async (userId: string, settings: UserSettings) => {
+    const { data: existing } = await supabase.from('user_settings').select('id').eq('user_id', userId).single();
+    if (existing) {
+      return supabase.from('user_settings').update(settings).eq('user_id', userId);
+    } else {
+      return supabase.from('user_settings').insert({ ...settings, user_id: userId });
+    }
   },
 
   // HABITS
@@ -47,13 +65,7 @@ export const API = {
   },
 
   toggleHabit: async (userId: string, habitId: string, date: string, currentXP: number) => {
-    const { data: existing } = await supabase
-      .from('habit_logs')
-      .select('*')
-      .eq('habit_id', habitId)
-      .eq('date', date)
-      .single();
-
+    const { data: existing } = await supabase.from('habit_logs').select('*').eq('habit_id', habitId).eq('date', date).single();
     if (existing) {
       await supabase.from('habit_logs').delete().eq('id', existing.id);
       return false;
@@ -145,5 +157,22 @@ export const API = {
 
   deleteFile: async (id: string) => {
     return supabase.from('user_files').delete().eq('id', id);
+  },
+
+  // ADMIN (Global Stats from Supabase)
+  getGlobalStats: async () => {
+    const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+    const { count: habitsCount } = await supabase.from('habits').select('*', { count: 'exact', head: true });
+    const { count: tasksCount } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+    return {
+      totalUsers: usersCount || 0,
+      totalHabits: habitsCount || 0,
+      totalTasks: tasksCount || 0,
+    };
+  },
+
+  getAllUsers: async () => {
+    const { data } = await supabase.from('profiles').select('*').order('xp', { ascending: false });
+    return data || [];
   }
 };
