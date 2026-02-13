@@ -1,0 +1,9 @@
+{
+  "name": "LIFE RPG - Ultimate",
+  "description": "Sistema de gestão de vida gamificado com persistência em nuvem e IA.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
