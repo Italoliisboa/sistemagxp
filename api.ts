@@ -1,15 +1,11 @@
 
 import { supabase } from './supabase';
-import { Habit, Task, XPRewards, Profile, FinancialEntry, DiaryEntry, WorkoutPlan, UserFile, UserSettings } from './types';
+import { Profile, Habit, Task, FinancialEntry, WorkoutPlan, UserFile, UserSettings, XPRewards, DiaryEntry } from './types';
 
 export const API = {
-  // PROFILE & SETTINGS
+  // PROFILE
   getProfile: async (userId: string): Promise<Profile> => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error) throw error;
     return data;
   },
@@ -21,39 +17,18 @@ export const API = {
   addXP: async (userId: string, currentXP: number, amount: number) => {
     const newXP = currentXP + amount;
     const newLevel = Math.floor(Math.sqrt(newXP / 100)) + 1;
-    await supabase
-      .from('profiles')
-      .update({ 
-        xp: newXP, 
-        level: newLevel, 
-        last_active: new Date().toISOString() 
-      })
-      .eq('id', userId);
-  },
-
-  getSettings: async (userId: string): Promise<UserSettings> => {
-    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
-    return data || { waterGoal: 2500, notificationsEnabled: true, theme: 'dark' };
-  },
-
-  updateSettings: async (userId: string, settings: UserSettings) => {
-    const { data: existing } = await supabase.from('user_settings').select('id').eq('user_id', userId).single();
-    if (existing) {
-      return supabase.from('user_settings').update(settings).eq('user_id', userId);
-    } else {
-      return supabase.from('user_settings').insert({ ...settings, user_id: userId });
-    }
+    return supabase.from('profiles').update({ xp: newXP, level: newLevel }).eq('id', userId);
   },
 
   // HABITS
   getHabits: async (userId: string) => {
-    const { data: habits } = await supabase.from('habits').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data: habits } = await supabase.from('habits').select('*').eq('user_id', userId);
     const { data: logs } = await supabase.from('habit_logs').select('*').eq('user_id', userId);
     return { habits: habits || [], logs: logs || [] };
   },
 
-  createHabit: async (userId: string, title: string, frequency: string, category: string = 'Geral') => {
-    return supabase.from('habits').insert({ user_id: userId, title, frequency, category }).select().single();
+  createHabit: async (userId: string, title: string, frequency: string, category: string) => {
+    return supabase.from('habits').insert({ user_id: userId, title, frequency, category });
   },
 
   updateHabit: async (habitId: string, updates: Partial<Habit>) => {
@@ -83,16 +58,12 @@ export const API = {
   },
 
   createTask: async (userId: string, title: string, priority: string, dueDate: string) => {
-    return supabase.from('tasks').insert({ user_id: userId, title, priority, due_date: dueDate, completed: false }).select().single();
+    return supabase.from('tasks').insert({ user_id: userId, title, priority, due_date: dueDate, completed: false });
   },
 
   completeTask: async (userId: string, taskId: string, currentXP: number) => {
     await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', taskId);
     await API.addXP(userId, currentXP, XPRewards.TASK);
-  },
-
-  deleteTask: async (taskId: string) => {
-    return supabase.from('tasks').delete().eq('id', taskId);
   },
 
   // FINANCE
@@ -102,35 +73,18 @@ export const API = {
   },
 
   addFinance: async (userId: string, entry: any, currentXP: number) => {
-    const { data, error } = await supabase.from('financial_entries').insert({ ...entry, user_id: userId }).select().single();
-    if (!error) await API.addXP(userId, currentXP, XPRewards.FINANCE);
-    return data;
+    await supabase.from('financial_entries').insert({ ...entry, user_id: userId });
+    await API.addXP(userId, currentXP, XPRewards.FINANCE);
   },
 
   // FITNESS
   getWorkouts: async (userId: string): Promise<WorkoutPlan[]> => {
-    const { data } = await supabase.from('workout_plans').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data } = await supabase.from('workout_plans').select('*').eq('user_id', userId);
     return data || [];
   },
 
   addWorkoutPlan: async (userId: string, plan: any) => {
-    return supabase.from('workout_plans').insert({ ...plan, user_id: userId }).select().single();
-  },
-
-  // DIARY
-  getDiary: async (userId: string): Promise<DiaryEntry[]> => {
-    const { data } = await supabase.from('diary_entries').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    return data || [];
-  },
-
-  addDiary: async (userId: string, title: string, content: string, currentXP: number) => {
-    const { data, error } = await supabase.from('diary_entries').insert({ user_id: userId, title, content }).select().single();
-    if (!error) await API.addXP(userId, currentXP, XPRewards.DIARY);
-    return data;
-  },
-
-  deleteDiary: async (id: string) => {
-    return supabase.from('diary_entries').delete().eq('id', id);
+    return supabase.from('workout_plans').insert({ ...plan, user_id: userId });
   },
 
   // WATER
@@ -145,30 +99,68 @@ export const API = {
     await API.addXP(userId, currentXP, 2);
   },
 
+  // DIARY
+  getDiary: async (userId: string): Promise<DiaryEntry[]> => {
+    const { data } = await supabase.from('diary').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  addDiary: async (userId: string, title: string, content: string, currentXP: number) => {
+    await supabase.from('diary').insert({ 
+      user_id: userId, 
+      title, 
+      content, 
+      created_at: new Date().toISOString(), 
+      updated_at: new Date().toISOString() 
+    });
+    await API.addXP(userId, currentXP, XPRewards.DIARY);
+  },
+
+  deleteDiary: async (id: string) => {
+    return supabase.from('diary').delete().eq('id', id);
+  },
+
   // FILES
   getFiles: async (userId: string): Promise<UserFile[]> => {
-    const { data } = await supabase.from('user_files').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data } = await supabase.from('files').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     return data || [];
   },
 
   uploadFile: async (userId: string, fileName: string, data: string, mimeType: string) => {
-    return supabase.from('user_files').insert({ user_id: userId, file_name: fileName, data, mime_type: mimeType }).select().single();
+    return supabase.from('files').insert({ 
+      user_id: userId, 
+      file_name: fileName, 
+      data, 
+      mime_type: mimeType, 
+      created_at: new Date().toISOString() 
+    });
   },
 
   deleteFile: async (id: string) => {
-    return supabase.from('user_files').delete().eq('id', id);
+    return supabase.from('files').delete().eq('id', id);
   },
 
-  // ADMIN (Global Stats from Supabase)
+  // SETTINGS
+  getSettings: async (userId: string): Promise<UserSettings> => {
+    const { data } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    return data || { waterGoal: 2500, notificationsEnabled: true, theme: 'dark' };
+  },
+
+  updateSettings: async (userId: string, settings: UserSettings) => {
+    const { data: existing } = await supabase.from('user_settings').select('id').eq('user_id', userId).single();
+    if (existing) {
+      return supabase.from('user_settings').update(settings).eq('user_id', userId);
+    } else {
+      return supabase.from('user_settings').insert({ ...settings, user_id: userId });
+    }
+  },
+
+  // ADMIN
   getGlobalStats: async () => {
-    const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-    const { count: habitsCount } = await supabase.from('habits').select('*', { count: 'exact', head: true });
-    const { count: tasksCount } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
-    return {
-      totalUsers: usersCount || 0,
-      totalHabits: habitsCount || 0,
-      totalTasks: tasksCount || 0,
-    };
+    const { count: u } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+    const { count: h } = await supabase.from('habits').select('*', { count: 'exact', head: true });
+    const { count: t } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+    return { totalUsers: u || 0, totalHabits: h || 0, totalTasks: t || 0 };
   },
 
   getAllUsers: async () => {

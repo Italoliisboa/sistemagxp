@@ -19,6 +19,7 @@ const Diary: React.FC<DiaryProps> = ({ user, refreshUser }) => {
 
   const loadDiary = async () => {
     setLoading(true);
+    // Correctly using the now existing API.getDiary
     const data = await API.getDiary(user.id);
     setEntries(data);
     setLoading(false);
@@ -26,6 +27,7 @@ const Diary: React.FC<DiaryProps> = ({ user, refreshUser }) => {
 
   const handleSave = async () => {
     if (!editingEntry?.content) return;
+    // Correctly using the now existing API.addDiary
     await API.addDiary(user.id, editingEntry.title || '', editingEntry.content, user.xp);
     setEditingEntry(null);
     loadDiary();
@@ -34,6 +36,7 @@ const Diary: React.FC<DiaryProps> = ({ user, refreshUser }) => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir este registro permanentemente?")) return;
+    // Correctly using the now existing API.deleteDiary
     await API.deleteDiary(id);
     loadDiary();
   };

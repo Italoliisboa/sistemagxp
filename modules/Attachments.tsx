@@ -17,6 +17,7 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
 
   const loadFiles = async () => {
     setLoading(true);
+    // Correctly using the now existing API.getFiles
     const data = await API.getFiles(user.id);
     setFiles(data);
     setLoading(false);
@@ -35,6 +36,7 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const data = event.target?.result as string;
+      // Correctly using the now existing API.uploadFile
       await API.uploadFile(user.id, file.name, data, file.type);
       setIsUploading(false);
       loadFiles();
@@ -45,6 +47,7 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
 
   const handleDelete = async (id: string) => {
     if (confirm("Excluir item do inventário?")) {
+      // Correctly using the now existing API.deleteFile
       await API.deleteFile(id);
       loadFiles();
     }
@@ -53,7 +56,8 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
   const downloadFile = (file: UserFile) => {
     const link = document.createElement('a');
     link.href = file.data;
-    link.download = (file as any).file_name || file.fileName;
+    // Use the snake_case property from the UserFile type
+    link.download = file.file_name;
     link.click();
   };
 
@@ -78,8 +82,9 @@ const Attachments: React.FC<AttachmentsProps> = ({ user, refreshUser }) => {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {files.map(file => {
-          const name = (file as any).file_name || file.fileName;
-          const mime = (file as any).mime_type || file.mimeType;
+          // Use snake_case properties to match UserFile type
+          const name = file.file_name;
+          const mime = file.mime_type;
           return (
             <div key={file.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-blue-500/50 transition-all flex flex-col group relative">
               <div className="text-4xl mb-4 grayscale group-hover:grayscale-0 transition-all">

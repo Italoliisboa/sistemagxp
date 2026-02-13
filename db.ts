@@ -48,6 +48,7 @@ export const DB = {
       level: 1,
       streak: 0,
       last_active: new Date().toISOString(),
+      // Added missing properties required by Profile type
       unlockedFeatures: [],
       diaryPinHash: hashPin(diaryPin)
     };
@@ -125,9 +126,10 @@ export const DB = {
     const newFile: UserFile = {
       id: Math.random().toString(36).substr(2, 9),
       user_id: userId,
-      fileName,
+      // Fixed property names to match snake_case in UserFile type
+      file_name: fileName,
       data,
-      mimeType,
+      mime_type: mimeType,
       created_at: new Date().toISOString(),
       linkedEntity
     };
@@ -168,7 +170,12 @@ export const DB = {
     const store = getStore();
     const newHabit: Habit = {
       id: Math.random().toString(36).substr(2, 9),
-      user_id: userId, title, frequency, created_at: new Date().toISOString()
+      user_id: userId, 
+      title, 
+      frequency, 
+      // Added missing required category field
+      category: 'Geral',
+      created_at: new Date().toISOString()
     };
     store.habits.push(newHabit);
     saveStore(store);
@@ -238,6 +245,7 @@ export const DB = {
     const store = getStore();
     const entry = store.finance.find(f => f.id === entryId);
     if (entry) {
+      // Correctly handle attachments array
       entry.attachments = entry.attachments ? [...entry.attachments, fileId] : [fileId];
       saveStore(store);
     }
@@ -277,7 +285,8 @@ export const DB = {
   unlockFeature: (userId: string, feature: string) => {
     const store = getStore();
     const user = store.users.find(u => u.id === userId);
-    if (user && !user.unlockedFeatures.includes(feature)) {
+    // Added null check and fixed access to unlockedFeatures
+    if (user && user.unlockedFeatures && !user.unlockedFeatures.includes(feature)) {
       user.unlockedFeatures.push(feature);
       saveStore(store);
     }
